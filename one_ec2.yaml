@@ -1,0 +1,11 @@
+---
+Resources:
+  WebInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-04b1ddd35fd71475a
+      KeyName: 123
+      SecurityGroupIds:
+        - sg-0afbeebd3ba67478e
+      SubnetId: subnet-08bd4864895b61c43
