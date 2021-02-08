@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  lambdaFun:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          s3 = boto3.resource('s3')
+          obj = s3.Object('s3demofiles', 's3Demo.txt')
+          def lambda_handler(event, context):
+              i=0
+              for line in obj.get()['Body']._raw_stream :
+                  i=i+1
+                  if i%1000000==0:
+                      logger.info(line)
+              return {
+                  'statusCode': 200,
+                  'body': 'check logs'
+              }
+
+      Description: fun to read 3 gb data from s3
+      FunctionName: readfun
+      PackageType: Zip
+      Role: 
+        Fn::GetAtt: [ execrole, Arn ]
+      Handler: index.lambda_handler
+      Runtime: python3.7
+      Timeout: 900
+
+  execrole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: role for lambda to access s3
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/service-role/AWSAppSyncPushToCloudWatchLogs
+      RoleName: lambdas3
