@@ -1,0 +1,1035 @@
+postgres_demo=# explain analyse SELECT * FROM insert_demo ORDER BY index ASC LIMIT 5;
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=4029438.35..4029438.93 rows=5 width=69) (actual time=122421.646..122427.663 rows=5 loops=1)
+   ->  Gather Merge  (cost=4029438.35..20068344.93 rows=137466744 width=69) (actual time=122421.644..122427.657 rows=5 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Sort  (cost=4028438.32..4200271.75 rows=68733372 width=69) (actual time=122418.980..122418.983 rows=4 loops=3)
+               Sort Key: index
+               Sort Method: top-N heapsort  Memory: 25kB
+               Worker 0:  Sort Method: top-N heapsort  Memory: 25kB
+               Worker 1:  Sort Method: top-N heapsort  Memory: 25kB
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..2886801.73 rows=68733372 width=69) (actual time=5.817..116980.560 rows=54977437 loops=3)
+ Planning Time: 0.105 ms
+ Execution Time: 122427.700 ms
+(12 rows)
+
+
+
+postgres_demo=# explain analyse SELECT * FROM insert_demo ORDER BY index DESC LIMIT 5;
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=4029438.35..4029438.93 rows=5 width=69) (actual time=111041.802..111044.666 rows=5 loops=1)
+   ->  Gather Merge  (cost=4029438.35..20068344.93 rows=137466744 width=69) (actual time=111041.801..111044.663 rows=5 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Sort  (cost=4028438.32..4200271.75 rows=68733372 width=69) (actual time=111039.810..111039.811 rows=4 loops=3)
+               Sort Key: index DESC
+               Sort Method: top-N heapsort  Memory: 26kB
+               Worker 0:  Sort Method: top-N heapsort  Memory: 26kB
+               Worker 1:  Sort Method: top-N heapsort  Memory: 26kB
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..2886801.73 rows=68733372 width=69) (actual time=8.421..103293.161 rows=54977437 loops=3)
+ Planning Time: 0.066 ms
+ Execution Time: 111044.685 ms
+(12 rows)
+
+
+
+
+postgres_demo=# explain analyse select * from insert_demo where cur_date='2020-12-31';
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..3060527.76 rows=8926 width=69) (actual time=90.642..104933.439 rows=8854 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058635.16 rows=3719 width=69) (actual time=52.548..104916.321 rows=2951 loops=3)
+         Filter: (cur_date = '2020-12-31'::date)
+         Rows Removed by Filter: 54974486
+ Planning Time: 18.279 ms
+ Execution Time: 104936.396 ms
+(8 rows)
+postgres_demo=# explain analyse select * from insert_demo where cur_date='2020-12-31';
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..156798.09 rows=17748 width=69) (actual time=0.394..349.806 rows=17708 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Append  (cost=0.00..154023.29 rows=7395 width=69) (actual time=0.332..337.774 rows=5903 loops=3)
+         ->  Parallel Bitmap Heap Scan on insert_demo  (cost=169.74..34143.65 rows=3719 width=69) (actual time=0.661..1.614 rows=8854 loops=1)
+               Recheck Cond: (cur_date = '2020-12-31'::date)
+               ->  Bitmap Index Scan on idx_btree_date  (cost=0.00..167.51 rows=8925 width=0) (actual time=0.625..0.625 rows=8854 loops=1)
+                     Index Cond: (cur_date = '2020-12-31'::date)
+         ->  Parallel Seq Scan on part_demo2019  (cost=0.00..119842.67 rows=3676 width=69) (actual time=0.164..336.740 rows=2951 loops=3)
+               Filter: (cur_date = '2020-12-31'::date)
+               Rows Removed by Filter: 2151522
+ Planning Time: 0.144 ms
+ Execution Time: 350.526 ms
+(13 rows)
+
+
+
+postgres_demo=# explain analyze select * from insert_demo ;
+                                                           QUERY PLAN                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Seq Scan on insert_demo  (cost=0.00..3849068.94 rows=164960094 width=69) (actual time=9.932..108433.808 rows=164932312 loops=1)
+ Planning Time: 0.065 ms
+ Execution Time: 114426.363 ms
+(3 rows)
+
+
+
+
+postgres_demo=# explain analyze select count(*) from insert_demo ;
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3059635.37..3059635.38 rows=1 width=8) (actual time=114591.685..114591.735 rows=1 loops=1)
+   ->  Gather  (cost=3059635.16..3059635.37 rows=2 width=8) (actual time=114589.884..114591.698 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3058635.16..3058635.17 rows=1 width=8) (actual time=114587.764..114587.765 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..2886801.73 rows=68733372 width=0) (actual time=10.485..110887.583 rows=54977437 loops=3)
+ Planning Time: 0.035 ms
+ Execution Time: 114591.762 ms
+(8 rows)
+
+
+
+
+
+
+postgres_demo=# explain analyze SELECT count(*) FROM insert_demo WHERE cur_date >= '2014-02-01' and cur_date <='2014-03-01';
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3231736.64..3231736.65 rows=1 width=8) (actual time=103110.680..103113.520 rows=1 loops=1)
+   ->  Gather  (cost=3231736.42..3231736.63 rows=2 width=8) (actual time=103110.455..103113.514 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3230736.42..3230736.43 rows=1 width=8) (actual time=103107.119..103107.120 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3230468.59 rows=107134 width=0) (actual time=40.367..103095.449 rows=85589 loops=3)
+                     Filter: ((cur_date >= '2014-02-01'::date) AND (cur_date <= '2014-03-01'::date))
+                     Rows Removed by Filter: 54891849
+ Planning Time: 0.049 ms
+ Execution Time: 103113.553 ms
+(10 rows)
+
+postgres_demo=# SELECT count(*) FROM insert_demo WHERE cur_date >= '2014-02-01' and cur_date <='2014-03-01';
+ count  
+--------
+ 256766
+(1 row)
+
+
+
+
+postgres_demo=# select count(*) from insert_demo where cur_date='2020-12-31';
+ count 
+-------
+  8854
+(1 row)
+
+postgres_demo=# explain analyze select * from insert_demo ;
+                                                           QUERY PLAN                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Seq Scan on insert_demo  (cost=0.00..3849068.94 rows=164960094 width=69) (actual time=9.932..108433.808 rows=164932312 loops=1)
+ Planning Time: 0.065 ms
+ Execution Time: 114426.363 ms
+(3 rows)
+
+
+
+
+
+postgres_demo=# explain analyze select count(*) from insert_demo ;
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3059635.37..3059635.38 rows=1 width=8) (actual time=114591.685..114591.735 rows=1 loops=1)
+   ->  Gather  (cost=3059635.16..3059635.37 rows=2 width=8) (actual time=114589.884..114591.698 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3058635.16..3058635.17 rows=1 width=8) (actual time=114587.764..114587.765 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..2886801.73 rows=68733372 width=0) (actual time=10.485..110887.583 rows=54977437 loops=3)
+ Planning Time: 0.035 ms
+ Execution Time: 114591.762 ms
+(8 rows)
+
+
+
+
+
+
+postgres_demo=# select count(*) from insert_demo ;
+   count   
+-----------
+ 164932312
+(1 row)
+
+
+
+
+
+
+
+
+
+
+
+postgres_demo=# select count(index) from insert_demo ;
+   count   
+-----------
+ 164932312
+(1 row)
+
+postgres_demo=# select count(cur_date) from insert_demo ;
+   count   
+-----------
+ 164932312
+(1 row)
+
+
+
+
+
+
+postgres_demo=# explain analyze SELECT count(*) FROM insert_demo WHERE cur_date >= '2014-02-01' and cur_date <='2014-03-01';
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3231736.64..3231736.65 rows=1 width=8) (actual time=103110.680..103113.520 rows=1 loops=1)
+   ->  Gather  (cost=3231736.42..3231736.63 rows=2 width=8) (actual time=103110.455..103113.514 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3230736.42..3230736.43 rows=1 width=8) (actual time=103107.119..103107.120 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3230468.59 rows=107134 width=0) (actual time=40.367..103095.449 rows=85589 loops=3)
+                     Filter: ((cur_date >= '2014-02-01'::date) AND (cur_date <= '2014-03-01'::date))
+                     Rows Removed by Filter: 54891849
+ Planning Time: 0.049 ms
+ Execution Time: 103113.553 ms
+(10 rows)
+
+
+
+
+
+
+
+
+postgres_demo=# SELECT count(*) FROM insert_demo WHERE cur_date >= '2014-02-01' and cur_date <='2014-03-01';
+ count  
+--------
+ 256766
+(1 row)
+
+
+
+
+
+postgres_demo=# explain analyze SELECT count(*) FROM insert_demo WHERE cur_date >= '2021-01-31';
+                                                                    QUERY PLAN                                                                     
+---------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3059652.55..3059652.56 rows=1 width=8) (actual time=114377.616..114379.155 rows=1 loops=1)
+   ->  Gather  (cost=3059652.33..3059652.54 rows=2 width=8) (actual time=114377.610..114379.151 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3058652.33..3058652.34 rows=1 width=8) (actual time=114374.937..114374.938 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058635.16 rows=6870 width=0) (actual time=114374.934..114374.935 rows=0 loops=3)
+                     Filter: (cur_date >= '2021-01-31'::date)
+                     Rows Removed by Filter: 54977437
+ Planning Time: 0.045 ms
+ Execution Time: 114379.181 ms
+(10 rows)
+
+
+
+
+
+postgres_demo=# explain analyze SELECT count(*) FROM insert_demo WHERE cur_date >= '2020-12-31';
+                                                                    QUERY PLAN                                                                    
+--------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3059652.55..3059652.56 rows=1 width=8) (actual time=106487.041..106490.087 rows=1 loops=1)
+   ->  Gather  (cost=3059652.33..3059652.54 rows=2 width=8) (actual time=106486.837..106490.081 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3058652.33..3058652.34 rows=1 width=8) (actual time=106484.721..106484.722 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058635.16 rows=6870 width=0) (actual time=77.167..106479.231 rows=2951 loops=3)
+                     Filter: (cur_date >= '2020-12-31'::date)
+                     Rows Removed by Filter: 54974486
+ Planning Time: 0.046 ms
+ Execution Time: 106490.113 ms
+(10 rows)
+
+
+
+postgres_demo=# SELECT count(*) FROM insert_demo WHERE cur_date >= '2020-12-31';
+ count 
+-------
+  8854
+(1 row)
+
+
+
+
+
+
+
+postgres_demo=# explain analyze SELECT count(*) FROM insert_demo WHERE cur_date <= '2020-01-31';
+                                                                       QUERY PLAN                                                                        
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3228221.32..3228221.33 rows=1 width=8) (actual time=106401.769..106402.166 rows=1 loops=1)
+   ->  Gather  (cost=3228221.11..3228221.32 rows=2 width=8) (actual time=106400.237..106402.159 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3227221.11..3227221.12 rows=1 width=8) (actual time=106398.154..106398.155 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058635.16 rows=67434380 width=0) (actual time=5.417..102512.521 rows=53988741 loops=3)
+                     Filter: (cur_date <= '2020-01-31'::date)
+                     Rows Removed by Filter: 988697
+ Planning Time: 0.045 ms
+ Execution Time: 106402.191 ms
+(10 rows)
+
+
+
+postgres_demo=# SELECT count(*) FROM insert_demo WHERE cur_date <= '2020-01-31';
+   count   
+-----------
+ 161966222
+(1 row)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+postgres_demo=# explain analyze SELECT count(*) FROM insert_demo WHERE cur_date >= '2020-11-30';
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3059927.86..3059927.87 rows=1 width=8) (actual time=102725.679..102725.742 rows=1 loops=1)
+   ->  Gather  (cost=3059927.65..3059927.86 rows=2 width=8) (actual time=102725.672..102725.738 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3058927.65..3058927.66 rows=1 width=8) (actual time=102721.975..102721.976 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058635.16 rows=116996 width=0) (actual time=56.825..102710.068 rows=94443 loops=3)
+                     Filter: (cur_date >= '2020-11-30'::date)
+                     Rows Removed by Filter: 54882995
+ Planning Time: 0.048 ms
+ Execution Time: 102725.770 ms
+(10 rows)
+
+
+postgres_demo=#  SELECT count(*) FROM insert_demo WHERE cur_date >= '2020-11-30';
+ count  
+--------
+ 283328
+(1 row)
+
+
+
+
+
+
+
+
+
+postgres_demo=# explain analyze select count(*) from insert_demo where small_int <=999;
+                                                                      QUERY PLAN                                                                       
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3076899.06..3076899.07 rows=1 width=8) (actual time=104801.277..104801.874 rows=1 loops=1)
+   ->  Gather  (cost=3076898.85..3076899.06 rows=2 width=8) (actual time=104799.803..104801.867 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3075898.85..3075898.86 rows=1 width=8) (actual time=104797.711..104797.711 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058635.16 rows=6905477 width=0) (actual time=6.617..104358.183 rows=5498512 loops=3)
+                     Filter: (small_int <= 999)
+                     Rows Removed by Filter: 49478926
+ Planning Time: 0.045 ms
+ Execution Time: 104801.908 ms
+(10 rows)
+
+
+
+
+
+
+postgres_demo=#  select count(*) from insert_demo where small_int <=999;
+  count   
+----------
+ 16495535
+(1 row)
+
+postgres_demo=# explain analyze select count(*) from insert_demo where small_int <=999 and sma;
+
+postgres_demo=# explain analyze select count(*) from insert_demo where small_int <=999 and sma;
+
+postgres_demo=# explain analyze select count(*) from insert_demo where small_int <=999 and small_int >=900;
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3233230.23..3233230.24 rows=1 width=8) (actual time=130249.389..130251.398 rows=1 loops=1)
+   ->  Gather  (cost=3233230.02..3233230.23 rows=2 width=8) (actual time=130248.936..130251.390 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3232230.02..3232230.03 rows=1 width=8) (actual time=130246.602..130246.603 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3230468.59 rows=704573 width=0) (actual time=7.004..130128.985 rows=550316 loops=3)
+                     Filter: ((small_int <= 999) AND (small_int >= 900))
+                     Rows Removed by Filter: 54427121
+ Planning Time: 0.051 ms
+ Execution Time: 130251.425 ms
+(10 rows)
+
+postgres_demo=# select count(*) from insert_demo where small_int <=999 and small_int >=900;
+  count  
+---------
+ 1650948
+(1 row)
+
+
+
+postgres_demo=# explain analyze select count(*) from insert_demo where int <=999999;
+                                                                     QUERY PLAN                                                                     
+----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3059800.03..3059800.04 rows=1 width=8) (actual time=125346.419..125348.760 rows=1 loops=1)
+   ->  Gather  (cost=3059799.81..3059800.02 rows=2 width=8) (actual time=125346.196..125348.753 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3058799.81..3058799.82 rows=1 width=8) (actual time=125344.090..125344.091 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058635.16 rows=65862 width=0) (actual time=10.097..125306.833 rows=55019 loops=3)
+                     Filter: ("int" <= 999999)
+                     Rows Removed by Filter: 54922418
+ Planning Time: 0.044 ms
+ Execution Time: 125348.788 ms
+(10 rows)
+
+postgres_demo=#  select count(*) from insert_demo where int <=999999;
+ count  
+--------
+ 165058
+(1 row)
+
+
+
+postgres_demo=# explain analyze select count(*) from insert_demo where int <=9999999 and int >=999999 ;
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3233072.66..3233072.67 rows=1 width=8) (actual time=104376.092..104378.305 rows=1 loops=1)
+   ->  Gather  (cost=3233072.45..3233072.66 rows=2 width=8) (actual time=104375.911..104378.299 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3232072.45..3232072.46 rows=1 width=8) (actual time=104374.041..104374.042 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3230468.59 rows=641545 width=0) (actual time=3.570..104270.191 rows=494673 loops=3)
+                     Filter: (("int" <= 9999999) AND ("int" >= 999999))
+                     Rows Removed by Filter: 54482765
+ Planning Time: 0.049 ms
+ Execution Time: 104378.331 ms
+(10 rows)
+
+postgres_demo=#  select count(*) from insert_demo where int <=9999999 and int >=999999 ;
+  count  
+---------
+ 1484018
+(1 row)
+
+
+
+
+
+postgres_demo=# explain analyze select count(*) from insert_demo where big_int <=9999999999999999;
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3061435.47..3061435.48 rows=1 width=8) (actual time=109759.596..109763.306 rows=1 loops=1)
+   ->  Gather  (cost=3061435.26..3061435.47 rows=2 width=8) (actual time=109759.244..109763.300 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3060435.26..3060435.27 rows=1 width=8) (actual time=109757.192..109757.193 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058635.16 rows=720040 width=0) (actual time=8.309..109644.986 rows=548901 loops=3)
+                     Filter: (big_int <= '9999999999999999'::bigint)
+                     Rows Removed by Filter: 54428537
+ Planning Time: 0.050 ms
+ Execution Time: 109763.337 ms
+(10 rows)
+
+postgres_demo=# select count(*) from insert_demo where big_int <=9999999999999999;
+  count  
+---------
+ 1646702
+(1 row)
+
+
+
+
+postgres_demo=# explain analyze select count(*) from insert_demo where big_int >=99999999999999995 and big_int <=9999999999999999;
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3232327.97..3232327.98 rows=1 width=8) (actual time=103997.059..103997.113 rows=1 loops=1)
+   ->  Gather  (cost=3232327.75..3232327.96 rows=2 width=8) (actual time=103994.947..103997.106 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3231327.75..3231327.76 rows=1 width=8) (actual time=103992.918..103992.919 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3230468.59 rows=343667 width=0) (actual time=103992.916..103992.916 rows=0 loops=3)
+                     Filter: ((big_int >= '99999999999999995'::bigint) AND (big_int <= '9999999999999999'::bigint))
+                     Rows Removed by Filter: 54977437
+ Planning Time: 0.052 ms
+ Execution Time: 103997.141 ms
+(10 rows)
+
+postgres_demo=# explain analyze select count(*) from insert_demo where big_int >=99999999999999999 and big_int <=9999999999999999;
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=3232327.97..3232327.98 rows=1 width=8) (actual time=108774.944..108777.171 rows=1 loops=1)
+   ->  Gather  (cost=3232327.75..3232327.96 rows=2 width=8) (actual time=108774.938..108777.167 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=3231327.75..3231327.76 rows=1 width=8) (actual time=108772.806..108772.807 rows=1 loops=3)
+               ->  Parallel Seq Scan on insert_demo  (cost=0.00..3230468.59 rows=343667 width=0) (actual time=108772.804..108772.804 rows=0 loops=3)
+                     Filter: ((big_int >= '99999999999999999'::bigint) AND (big_int <= '9999999999999999'::bigint))
+                     Rows Removed by Filter: 54977437
+ Planning Time: 0.049 ms
+ Execution Time: 108777.197 ms
+(10 rows)
+
+
+
+postgres_demo=# explain analyze select index from insert_demo where index<1000000;
+                                                                          QUERY PLAN                                                                           
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Only Scan using b_tree_on_insert_demo_index on insert_demo  (cost=0.57..41793.71 rows=999665 width=8) (actual time=0.018..452.869 rows=1037256 loops=1)
+   Index Cond: (index < 1000000)
+   Heap Fetches: 1037256
+ Planning Time: 23.180 ms
+ Execution Time: 489.542 ms
+(5 rows)
+
+
+
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date > '2020-11-30';
+                                                               QUERY PLAN                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..3086672.30 rows=271818 width=4) (actual time=18.871..108766.029 rows=274474 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058490.50 rows=113258 width=4) (actual time=15.772..108695.875 rows=91491 loops=3)
+         Filter: (cur_date > '2020-11-30'::date)
+         Rows Removed by Filter: 54885946
+ Planning Time: 0.041 ms
+ Execution Time: 108782.205 ms
+(8 rows)
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date > '2020-11-30';
+                                                                       QUERY PLAN                                                                        
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+ Append  (cost=0.57..1201333.18 rows=527692 width=4) (actual time=18.405..742.543 rows=548948 loops=1)
+   ->  Index Only Scan using idx_btree_date on insert_demo  (cost=0.57..1031722.91 rows=271818 width=4) (actual time=18.404..71.105 rows=274474 loops=1)
+         Index Cond: (cur_date > '2020-11-30'::date)
+         Heap Fetches: 274474
+   ->  Seq Scan on part_demo2019  (cost=0.00..166971.81 rows=255874 width=4) (actual time=0.089..639.687 rows=274474 loops=1)
+         Filter: (cur_date > '2020-11-30'::date)
+         Rows Removed by Filter: 6188946
+ Planning Time: 0.136 ms
+ Execution Time: 760.252 ms
+(9 rows)
+
+
+
+
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo WHERE EXTRACT(MONTH FROM cur_date) > 10 and EXTRACT(MONTH FROM cur_date) < 11;
+                                                                                                   QUERY PLAN                                                                                               
+     
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-----
+ Gather  (cost=1000.00..4000979.20 rows=824662 width=4) (actual time=104963.483..104972.058 rows=0 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on insert_demo  (cost=0.00..3917513.00 rows=343609 width=4) (actual time=104961.457..104961.458 rows=0 loops=3)
+         Filter: ((date_part('month'::text, (cur_date)::timestamp without time zone) > '10'::double precision) AND (date_part('month'::text, (cur_date)::timestamp without time zone) < '11'::double precisi
+on))
+         Rows Removed by Filter: 54977437
+ Planning Time: 0.111 ms
+ Execution Time: 104972.073 ms
+(8 rows)
+
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo WHERE EXTRACT(MONTH FROM cur_date) > 10 ;
+                                                          QUERY PLAN                                                           
+-------------------------------------------------------------------------------------------------------------------------------
+ Seq Scan on insert_demo  (cost=0.00..5085783.60 rows=54977440 width=4) (actual time=12.793..102111.814 rows=27544794 loops=1)
+   Filter: (date_part('month'::text, (cur_date)::timestamp without time zone) > '10'::double precision)
+   Rows Removed by Filter: 137387518
+ Planning Time: 0.062 ms
+ Execution Time: 103138.967 ms
+(5 rows)
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo WHERE EXTRACT(MONTH FROM cur_date) > 10 and EXTRACT(MONTH FROM cur_date) < 12;
+                                                                                                   QUERY PLAN                                                                                               
+     
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-----
+ Gather  (cost=1000.00..4000979.20 rows=824662 width=4) (actual time=0.218..127015.343 rows=13546620 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on insert_demo  (cost=0.00..3917513.00 rows=343609 width=4) (actual time=7.500..126071.323 rows=4515540 loops=3)
+         Filter: ((date_part('month'::text, (cur_date)::timestamp without time zone) > '10'::double precision) AND (date_part('month'::text, (cur_date)::timestamp without time zone) < '12'::double precisi
+on))
+         Rows Removed by Filter: 50461897
+ Planning Time: 0.081 ms
+ Execution Time: 127620.864 ms
+(8 rows)
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo WHERE EXTRACT(MONTH FROM cur_date) = 10 and EXTRACT(DAY FROM cur_date) = 16;
+                                                                                                  QUERY PLAN                                                                                                
+   
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---
+ Gather  (cost=1000.00..3918925.30 rows=4123 width=4) (actual time=0.210..128172.483 rows=451554 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on insert_demo  (cost=0.00..3917513.00 rows=1718 width=4) (actual time=8.695..128047.260 rows=150518 loops=3)
+         Filter: ((date_part('month'::text, (cur_date)::timestamp without time zone) = '10'::double precision) AND (date_part('day'::text, (cur_date)::timestamp without time zone) = '16'::double precision
+))
+         Rows Removed by Filter: 54826919
+ Planning Time: 0.103 ms
+ Execution Time: 128220.745 ms
+(8 rows)
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo WHERE EXTRACT(YEAR FROM cur_date)=2020 and EXTRACT(MONTH FROM cur_date) = 11 and EXTRACT(DAY FROM cur_date) = 16;
+                                                                                                                                                   QUERY PLAN                                               
+                                                                                                     
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..4433928.60 rows=21 width=4) (actual time=22.775..108436.380 rows=8854 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on insert_demo  (cost=0.00..4432926.50 rows=9 width=4) (actual time=24.880..108422.551 rows=2951 loops=3)
+         Filter: ((date_part('year'::text, (cur_date)::timestamp without time zone) = '2020'::double precision) AND (date_part('month'::text, (cur_date)::timestamp without time zone) = '11'::double precis
+ion) AND (date_part('day'::text, (cur_date)::timestamp without time zone) = '16'::double precision))
+         Rows Removed by Filter: 54974486
+ Planning Time: 0.097 ms
+ Execution Time: 108438.799 ms
+(8 rows)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date >'2020-12-10';
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..3077904.00 rows=184135 width=4) (actual time=20.216..112249.826 rows=185934 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058490.50 rows=76723 width=4) (actual time=24.422..112127.265 rows=61978 loops=3)
+         Filter: (cur_date > '2020-12-10'::date)
+         Rows Removed by Filter: 54915459
+ Planning Time: 0.131 ms
+ Execution Time: 112259.614 ms
+(8 rows)
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date >'2020-12-10';
+                                                                             QUERY PLAN                                                                              
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..868472.75 rows=357764 width=4) (actual time=0.361..491.248 rows=371868 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Append  (cost=0.00..831696.35 rows=149068 width=4) (actual time=0.132..354.066 rows=123956 loops=3)
+         ->  Parallel Index Only Scan using idx_btree_date on insert_demo  (cost=0.57..711108.34 rows=76723 width=4) (actual time=0.051..68.631 rows=185934 loops=1)
+               Index Cond: (cur_date > '2020-12-10'::date)
+               Heap Fetches: 185934
+         ->  Parallel Seq Scan on part_demo2019  (cost=0.00..119842.67 rows=72345 width=4) (actual time=0.152..323.071 rows=61978 loops=3)
+               Filter: (cur_date > '2020-12-10'::date)
+               Rows Removed by Filter: 2092495
+ Planning Time: 0.148 ms
+ Execution Time: 505.415 ms
+(12 rows)
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date <'2020-12-10';
+                                                           QUERY PLAN                                                           
+--------------------------------------------------------------------------------------------------------------------------------
+ Seq Scan on insert_demo  (cost=0.00..4261122.00 rows=164739260 width=4) (actual time=0.016..104592.733 rows=164737524 loops=1)
+   Filter: (cur_date < '2020-12-10'::date)
+   Rows Removed by Filter: 194788
+ Planning Time: 0.063 ms
+ Execution Time: 110688.666 ms
+(5 rows)
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date ='2020-12-10';
+                                                              QUERY PLAN                                                              
+--------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..3060383.00 rows=8925 width=4) (actual time=16.031..123451.436 rows=8854 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058490.50 rows=3719 width=4) (actual time=43.286..123436.779 rows=2951 loops=3)
+         Filter: (cur_date = '2020-12-10'::date)
+         Rows Removed by Filter: 54974486
+ Planning Time: 0.048 ms
+ Execution Time: 123455.373 ms
+(8 rows)
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date between '2020-11-30' and '2020-12-10';
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..3240955.80 rows=96608 width=4) (actual time=27.297..108095.808 rows=97394 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on insert_demo  (cost=0.00..3230295.00 rows=40253 width=4) (actual time=40.095..108074.153 rows=32465 loops=3)
+         Filter: ((cur_date >= '2020-11-30'::date) AND (cur_date <= '2020-12-10'::date))
+         Rows Removed by Filter: 54944973
+ Planning Time: 0.055 ms
+ Execution Time: 108101.999 ms
+(8 rows)
+
+postgres_demo=# CREATE INDEX b_tree_on_date_on_insert_demo ON insert_demo USING BTREE (cur_date);
+CREATE INDEX
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date between '2020-11-30' and '2020-12-10';
+                                                                           QUERY PLAN                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Only Scan using b_tree_on_date_on_insert_demo on insert_demo  (cost=0.57..381118.34 rows=96608 width=4) (actual time=0.041..7265.870 rows=97394 loops=1)
+   Index Cond: ((cur_date >= '2020-11-30'::date) AND (cur_date <= '2020-12-10'::date))
+   Heap Fetches: 97394
+ Planning Time: 15.158 ms
+ Execution Time: 7285.704 ms
+(5 rows)
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date ='2020-12-10';
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on insert_demo  (cost=169.74..34208.87 rows=8925 width=4) (actual time=2.964..10.647 rows=8854 loops=1)
+   Recheck Cond: (cur_date = '2020-12-10'::date)
+   Heap Blocks: exact=8854
+   ->  Bitmap Index Scan on b_tree_on_date_on_insert_demo  (cost=0.00..167.51 rows=8925 width=0) (actual time=1.691..1.691 rows=8854 loops=1)
+         Index Cond: (cur_date = '2020-12-10'::date)
+ Planning Time: 0.056 ms
+ Execution Time: 10.928 ms
+(7 rows)
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date <'2020-12-10';
+                                                           QUERY PLAN                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Seq Scan on insert_demo  (cost=0.00..4261122.00 rows=164739260 width=4) (actual time=10.979..100466.885 rows=164737524 loops=1)
+   Filter: (cur_date < '2020-12-10'::date)
+   Rows Removed by Filter: 194788
+ Planning Time: 0.075 ms
+ Execution Time: 106324.653 ms
+(5 rows)
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date >'2020-12-10';
+                                                                           QUERY PLAN                                                                            
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Only Scan using b_tree_on_date_on_insert_demo on insert_demo  (cost=0.57..712186.46 rows=184135 width=4) (actual time=0.011..148.315 rows=185934 loops=1)
+   Index Cond: (cur_date > '2020-12-10'::date)
+   Heap Fetches: 185934
+ Planning Time: 0.104 ms
+ Execution Time: 154.155 ms
+(5 rows)
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date <'2020-12-10';
+                                                           QUERY PLAN                                                           
+--------------------------------------------------------------------------------------------------------------------------------
+ Seq Scan on insert_demo  (cost=0.00..4261122.00 rows=164739260 width=4) (actual time=9.347..276030.814 rows=164737524 loops=1)
+   Filter: (cur_date < '2020-12-10'::date)
+   Rows Removed by Filter: 194788
+ Planning Time: 0.076 ms
+ Execution Time: 283157.655 ms
+(5 rows)
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date between '2020-11-30' and '2020-12-10';
+                                                                            QUERY PLAN                                                                            
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1355.89..3229856.86 rows=96608 width=4) (actual time=178.710..185986.952 rows=97394 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Bitmap Heap Scan on insert_demo  (cost=355.89..3219196.06 rows=40253 width=4) (actual time=142.670..185738.108 rows=32465 loops=3)
+         Recheck Cond: ((cur_date >= '2020-11-30'::date) AND (cur_date <= '2020-12-10'::date))
+         Rows Removed by Index Recheck: 28381059
+         Heap Blocks: lossy=373569
+         ->  Bitmap Index Scan on brin_on_cur_date_on_insert_demo  (cost=0.00..331.74 rows=41912112 width=0) (actual time=118.083..118.084 rows=11368960 loops=1)
+               Index Cond: ((cur_date >= '2020-11-30'::date) AND (cur_date <= '2020-12-10'::date))
+ Planning Time: 12.601 ms
+ Execution Time: 185998.035 ms
+(11 rows)
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date >'2020-12-10';
+                                                                           QUERY PLAN                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1492.10..3071511.26 rows=184135 width=4) (actual time=86.691..204135.309 rows=185934 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Bitmap Heap Scan on insert_demo  (cost=492.10..3052097.76 rows=76723 width=4) (actual time=29.313..204034.450 rows=61978 loops=3)
+         Recheck Cond: (cur_date > '2020-12-10'::date)
+         Rows Removed by Index Recheck: 28325946
+         Heap Blocks: lossy=366381
+         ->  Bitmap Index Scan on brin_on_cur_date_on_insert_demo  (cost=0.00..446.07 rows=76203840 width=0) (actual time=83.912..83.913 rows=11358720 loops=1)
+               Index Cond: (cur_date > '2020-12-10'::date)
+ Planning Time: 0.128 ms
+ Execution Time: 204151.693 ms
+(11 rows)
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date >'2020-12-10';
+                                                                                QUERY PLAN                                                                                
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Append  (cost=0.57..797545.81 rows=374638 width=4) (actual time=36.698..29859.765 rows=371868 loops=1)
+   ->  Index Only Scan using b_tree_on_date_on_insert_demo on insert_demo  (cost=0.57..712186.46 rows=184135 width=4) (actual time=36.697..29488.571 rows=185934 loops=1)
+         Index Cond: (cur_date > '2020-12-10'::date)
+         Heap Fetches: 185934
+   ->  Seq Scan on part_demo1  (cost=0.00..83486.16 rows=190503 width=4) (actual time=0.311..315.200 rows=185934 loops=1)
+         Filter: (cur_date > '2020-12-10'::date)
+         Rows Removed by Filter: 3045776
+ Planning Time: 9.760 ms
+ Execution Time: 29891.650 ms
+(9 rows)
+
+
+
+
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date = '2020-02-16';
+                                                                         QUERY PLAN                                                                         
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..90973.13 rows=19267 width=4) (actual time=43.525..12962.274 rows=17708 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Append  (cost=0.00..88046.43 rows=8028 width=4) (actual time=25.602..12684.551 rows=5903 loops=3)
+         ->  Parallel Bitmap Heap Scan on insert_demo  (cost=169.74..34143.79 rows=3719 width=4) (actual time=36.865..12378.655 rows=2951 loops=3)
+               Recheck Cond: (cur_date = '2020-02-16'::date)
+               Heap Blocks: exact=2197
+               ->  Bitmap Index Scan on b_tree_on_date_on_insert_demo  (cost=0.00..167.51 rows=8925 width=0) (actual time=62.011..62.011 rows=8854 loops=1)
+                     Index Cond: (cur_date = '2020-02-16'::date)
+         ->  Parallel Seq Scan on part_demo1  (cost=0.00..53862.50 rows=4309 width=4) (actual time=0.038..452.852 rows=4427 loops=2)
+               Filter: (cur_date = '2020-02-16'::date)
+               Rows Removed by Filter: 1611428
+ Planning Time: 15.969 ms
+ Execution Time: 12971.508 ms
+(14 rows)
+
+
+
+
+
+postgres_demo=# CREATE INDEX hash_on_date_on_insert_demo ON insert_demo USING HASH (cur_date);
+CREATE INDEX
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date = '2000-02-16';
+                                                                   QUERY PLAN                                                                   
+------------------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on insert_demo  (cost=169.74..34208.87 rows=8925 width=4) (actual time=18.929..79301.334 rows=8854 loops=1)
+   Recheck Cond: (cur_date = '2000-02-16'::date)
+   Heap Blocks: exact=8854
+   ->  Bitmap Index Scan on b_tree_on_date_on_insert_demo  (cost=0.00..167.51 rows=8925 width=0) (actual time=16.108..16.109 rows=8854 loops=1)
+         Index Cond: (cur_date = '2000-02-16'::date)
+ Planning Time: 21.513 ms
+ Execution Time: 79317.266 ms
+(7 rows)
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date = '2000-02-16';
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Append  (cost=169.74..34253.35 rows=8925 width=4) (actual time=83.594..116.936 rows=8854 loops=1)
+   ->  Bitmap Heap Scan on insert_demo  (cost=169.74..34208.72 rows=8925 width=4) (actual time=83.593..116.368 rows=8854 loops=1)
+         Recheck Cond: (cur_date = '2000-02-16'::date)
+         Heap Blocks: exact=119
+         ->  Bitmap Index Scan on idx_btree_date  (cost=0.00..167.51 rows=8925 width=0) (actual time=67.805..67.806 rows=8854 loops=1)
+               Index Cond: (cur_date = '2000-02-16'::date)
+ Planning Time: 0.199 ms
+ Execution Time: 117.293 ms
+(8 rows)
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date = '2000-02-16';
+                                                             QUERY PLAN                                                              
+-------------------------------------------------------------------------------------------------------------------------------------
+ Append  (cost=169.74..34253.35 rows=8925 width=4) (actual time=0.332..1.986 rows=8854 loops=1)
+   ->  Bitmap Heap Scan on insert_demo  (cost=169.74..34208.72 rows=8925 width=4) (actual time=0.332..1.453 rows=8854 loops=1)
+         Recheck Cond: (cur_date = '2000-02-16'::date)
+         Heap Blocks: exact=119
+         ->  Bitmap Index Scan on idx_btree_date  (cost=0.00..167.51 rows=8925 width=0) (actual time=0.318..0.318 rows=8854 loops=1)
+               Index Cond: (cur_date = '2000-02-16'::date)
+ Planning Time: 0.139 ms
+ Execution Time: 2.280 ms
+(8 rows)
+
+
+
+
+
+postgres_demo=# CREATE INDEX hash_on_index_on_insert_demo ON insert_demo USING HASH (index);
+CREATE INDEX
+postgres_demo=# explain analyze select * from insert_demo where index=1212121;
+                                                                 QUERY PLAN                                                                  
+---------------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using hash_on_index_on_insert_demo on insert_demo  (cost=0.00..8.02 rows=1 width=69) (actual time=19.196..19.199 rows=1 loops=1)
+   Index Cond: (index = 1212121)
+ Planning Time: 29.069 ms
+ Execution Time: 19.274 ms
+(4 rows)
+
+postgres_demo=# explain analyze select * from insert_demo where index=121;
+                                                                 QUERY PLAN                                                                  
+---------------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using hash_on_index_on_insert_demo on insert_demo  (cost=0.00..8.02 rows=1 width=69) (actual time=16.929..25.384 rows=2 loops=1)
+   Index Cond: (index = 121)
+ Planning Time: 0.113 ms
+ Execution Time: 25.415 ms
+(4 rows)
+
+postgres_demo=#  select * from insert_demo where index=121;
+ index |  cur_date  | char  | char_varying | small_int |    int    |      big_int       |         text_demo         
+-------+------------+-------+--------------+-----------+-----------+--------------------+---------------------------
+   121 | 1970-05-02 | MUTdY | QmPrypENjS   |      9223 | 638033489 | 279675445148542375 | fBmTBwSUtaMLAVzKWuwVcdlsu
+   121 | 1970-05-02 | uwMSb | BpmCVjccFP   |      9606 | 906754310 | 508192358831804572 | XHjPGzOfOsUEdfZYUWKcsvADC
+(2 rows)
+
+
+
+
+postgres_demo=# explain analyze select * from insert_demo where cur_date <'1971-01-01';
+                                                                    QUERY PLAN                                                                    
+--------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..3530724.08 rows=4088533 width=81) (actual time=0.670..119492.566 rows=6463420 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Append  (cost=0.00..3120870.78 rows=1703556 width=81) (actual time=5.946..118354.665 rows=2154473 loops=3)
+         ->  Parallel Seq Scan on insert_demo  (cost=0.00..3058490.50 rows=1416289 width=69) (actual time=6.692..117617.976 rows=1077237 loops=3)
+               Filter: (cur_date < '1971-01-01'::date)
+               Rows Removed by Filter: 53900201
+         ->  Parallel Seq Scan on part_demo1970  (cost=0.00..53862.50 rows=287267 width=140) (actual time=0.040..811.463 rows=1615855 loops=2)
+               Filter: (cur_date < '1971-01-01'::date)
+ Planning Time: 11.757 ms
+ Execution Time: 119796.042 ms
+(11 rows)
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date >'2020-09-16';
+                                                                                QUERY PLAN                                                                                 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Append  (cost=0.57..3303474.09 rows=1863650 width=4) (actual time=25.215..99857.100 rows=1877048 loops=1)
+   ->  Index Only Scan using b_tree_on_date_on_insert_demo on insert_demo  (cost=0.57..3210669.68 rows=929442 width=4) (actual time=25.214..99113.310 rows=938524 loops=1)
+         Index Cond: (cur_date > '2020-09-16'::date)
+         Heap Fetches: 938524
+   ->  Seq Scan on part_demo1  (cost=0.00..83486.16 rows=934208 width=4) (actual time=0.106..497.545 rows=938524 loops=1)
+         Filter: (cur_date > '2020-09-16'::date)
+         Rows Removed by Filter: 2293186
+ Planning Time: 40.678 ms
+ Execution Time: 99996.896 ms
+(9 rows)
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date >'2020-09-16';
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Append  (cost=0.57..3392074.40 rows=1848989 width=4) (actual time=0.026..6677.235 rows=1877048 loops=1)
+   ->  Index Only Scan using idx_btree_date on insert_demo  (cost=0.57..3215857.65 rows=929442 width=4) (actual time=0.025..5921.297 rows=938524 loops=1)
+         Index Cond: (cur_date > '2020-09-16'::date)
+         Heap Fetches: 938524
+   ->  Seq Scan on part_demo2019  (cost=0.00..166971.81 rows=919547 width=4) (actual time=0.553..636.540 rows=938524 loops=1)
+         Filter: (cur_date > '2020-09-16'::date)
+         Rows Removed by Filter: 5524896
+ Planning Time: 42.683 ms
+ Execution Time: 6740.328 ms
+(9 rows)
+
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date ='2020-09-16';
+                                                                         QUERY PLAN                                                                         
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..96873.32 rows=17709 width=4) (actual time=0.334..671.547 rows=17708 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Append  (cost=0.00..94102.42 rows=7379 width=4) (actual time=14.986..598.896 rows=5903 loops=3)
+         ->  Parallel Bitmap Heap Scan on insert_demo  (cost=169.74..34143.79 rows=3719 width=4) (actual time=14.932..460.189 rows=2951 loops=3)
+               Recheck Cond: (cur_date = '2020-09-16'::date)
+               Heap Blocks: exact=1020
+               ->  Bitmap Index Scan on b_tree_on_date_on_insert_demo  (cost=0.00..167.51 rows=8925 width=0) (actual time=43.303..43.304 rows=8854 loops=1)
+                     Index Cond: (cur_date = '2020-09-16'::date)
+         ->  Parallel Seq Scan on part_demo1  (cost=0.00..59921.73 rows=3660 width=4) (actual time=0.166..206.941 rows=4427 loops=2)
+               Filter: (cur_date = '2020-09-16'::date)
+               Rows Removed by Filter: 1611428
+ Planning Time: 0.521 ms
+ Execution Time: 673.277 ms
+(14 rows)
+
+
+postgres_demo=# explain analyze select cur_date from insert_demo where cur_date ='2020-09-16';
+                                                                    QUERY PLAN                                                                    
+--------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..156798.09 rows=17748 width=4) (actual time=235.490..33214.225 rows=17708 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Append  (cost=0.00..154023.29 rows=7395 width=4) (actual time=225.807..32867.324 rows=5903 loops=3)
+         ->  Parallel Bitmap Heap Scan on insert_demo  (cost=169.74..34143.65 rows=3719 width=4) (actual time=359.038..957.309 rows=8854 loops=1)
+               Recheck Cond: (cur_date = '2020-09-16'::date)
+               ->  Bitmap Index Scan on idx_btree_date  (cost=0.00..167.51 rows=8925 width=0) (actual time=260.703..260.703 rows=8854 loops=1)
+                     Index Cond: (cur_date = '2020-09-16'::date)
+         ->  Parallel Seq Scan on part_demo2019  (cost=0.00..119842.67 rows=3676 width=4) (actual time=118.240..32546.202 rows=2951 loops=3)
+               Filter: (cur_date = '2020-09-16'::date)
+               Rows Removed by Filter: 2151522
+ Planning Time: 946.051 ms
+ Execution Time: 33217.878 ms
+(13 rows)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
